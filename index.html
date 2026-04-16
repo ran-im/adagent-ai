@@ -455,22 +455,34 @@ function pickImg(brief, offset, w, h) {
 }
 
 function parseMakerAssets(text) {
-  try {
-    // Strip markdown fences if present
-    const clean = text.replace(/```json\s*/i,'').replace(/```\s*$/,'').trim();
-    return JSON.parse(clean);
-  } catch(e) {
-    try {
-      // Find first { ... } block
-      const m = text.match(/\{[\s\S]*\}/);
-      if (m) return JSON.parse(m[0]);
-    } catch(e2) {}
+  if (!text) return null;
+
+  // Walk character-by-character to extract the outermost balanced JSON object.
+  // This works even if Claude adds intro text, markdown fences, or trailing notes.
+  const stripped = text.replace(/```json\s*/gi,'').replace(/```/g,'');
+  const start = stripped.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0, inStr = false, escNext = false;
+  for (let i = start; i < stripped.length; i++) {
+    const c = stripped[i];
+    if (escNext)          { escNext = false; continue; }
+    if (c === '\\' && inStr) { escNext = true;  continue; }
+    if (c === '"')           { inStr = !inStr;   continue; }
+    if (inStr)               { continue; }
+    if (c === '{') depth++;
+    if (c === '}') {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(stripped.slice(start, i + 1)); } catch(e) { return null; }
+      }
+    }
   }
   return null;
 }
 
-function renderMakerMockups(assets, brief) {
-  if (!assets) return `<div style="white-space:pre-wrap;font-family:'DM Mono',monospace;font-size:12.5px;color:#bbb;line-height:1.7">${esc(brief)}</div>`;
+function renderMakerMockups(assets, brief, rawText) {
+  if (!assets) return `<div style="white-space:pre-wrap;font-family:'DM Mono',monospace;font-size:12.5px;color:#bbb;line-height:1.7;padding:4px 0">${esc(rawText||'No output')}</div>`;
 
   const brandInit = (assets.brand_name||'B').charAt(0).toUpperCase();
   const brandName = esc(assets.brand_name||'Brand');
@@ -682,7 +694,7 @@ async function runPipeline() {
         makerAssets = parseMakerAssets(result);
         const el = document.getElementById('output-2');
         el.className = 'agent-output visible mockup-mode';
-        el.innerHTML = renderMakerMockups(makerAssets, brief);
+        el.innerHTML = renderMakerMockups(makerAssets, brief, result);
         if (makerAssets) setTimeout(() => generateAdImages(makerAssets), 150);
       } else {
         showOutput(i, result);
