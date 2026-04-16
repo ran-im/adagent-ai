@@ -201,6 +201,26 @@
   .sb-scene { font-size:10px; color:#666; line-height:1.45; }
   /* override agent-output for mockup mode */
   .agent-output.mockup-mode { font-family:inherit; white-space:normal; background:transparent; border:none; padding:0; max-height:none; color:inherit; }
+
+  /* AI image loading shimmer */
+  @keyframes shimmer { 0%{background-position:-600px 0} 100%{background-position:600px 0} }
+  .img-loading { background-image:linear-gradient(90deg,#111 25%,#222 50%,#111 75%) !important; background-size:600px 100% !important; animation:shimmer 1.4s infinite !important; }
+  .img-loading .ad-img-overlay { display:none !important; }
+  .img-loaded { transition:background-image 0.4s ease; }
+
+  /* Storyboard player */
+  .sb-play-btn { display:block; width:100%; margin-top:14px; background:transparent; border:1px solid var(--gold); color:var(--gold); padding:11px; font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:3px; cursor:pointer; border-radius:4px; transition:all .2s; }
+  .sb-play-btn:hover { background:var(--gold); color:var(--black); }
+  .sb-player { display:none; margin-top:14px; border-radius:10px; overflow:hidden; position:relative; }
+  .sb-player-frame { width:100%; height:320px; background-size:cover; background-position:center; transition:background-image .6s ease; }
+  .sb-player-overlay { position:absolute; inset:0; background:linear-gradient(to top,rgba(0,0,0,.7) 0%,transparent 50%); display:flex; flex-direction:column; justify-content:flex-end; padding:20px; }
+  .sb-player-time { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); margin-bottom:4px; }
+  .sb-player-scene { font-size:13px; color:#fff; line-height:1.5; }
+  .sb-player-text { font-family:'Bebas Neue',sans-serif; font-size:26px; letter-spacing:2px; color:#fff; margin-top:6px; }
+  .sb-dots { position:absolute; top:14px; right:14px; display:flex; gap:6px; }
+  .sb-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,.3); transition:background .3s; }
+  .sb-dot.active { background:var(--gold); }
+  .sb-close-btn { position:absolute; top:14px; left:14px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:4px; padding:4px 10px; font-size:11px; letter-spacing:2px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -351,11 +371,13 @@ Be bold, creative, and precise. Your concepts should feel fresh, not generic. Re
     "primary_text": "2-3 sentence primary text. Benefit-driven and emotionally resonant.",
     "headline": "Punchy headline (max 40 chars)",
     "description": "Short description (max 30 chars)",
-    "cta": "Learn More"
+    "cta": "Learn More",
+    "image_prompt": "Describe the ideal Facebook ad photo in 1-2 sentences: people, setting, mood, lighting. Example: Young woman smiling while using a laptop in a bright modern kitchen, warm morning light, aspirational lifestyle feel. Commercial photography, no text in image."
   },
   "instagram": {
     "caption": "Engaging 2-4 sentence caption in brand voice",
-    "hashtags": "#tag1 #tag2 #tag3 #tag4 #tag5 #tag6"
+    "hashtags": "#tag1 #tag2 #tag3 #tag4 #tag5 #tag6",
+    "image_prompt": "Describe the ideal Instagram square ad image: subject, style, colours, mood. Example: Flat lay of artisan coffee and notebook on marble surface, overhead shot, muted tones, minimal aesthetic. Lifestyle photography, vibrant, no text in image."
   },
   "google": {
     "headline1": "Headline One (max 30 chars)",
@@ -376,12 +398,11 @@ Be bold, creative, and precise. Your concepts should feel fresh, not generic. Re
     "script": "Full 30-second script with [SFX: description] and [ANNOUNCER:] markers"
   },
   "video": [
-    {"time": "0-5s", "scene": "Opening visual — describe the shot", "text": "On-screen text overlay", "mood": "emotional"},
-    {"time": "5-15s", "scene": "Problem or desire moment — describe the shot", "text": "Key message text", "mood": "relatable"},
-    {"time": "15-25s", "scene": "Product or service reveal — describe the shot", "text": "Benefit statement", "mood": "confident"},
-    {"time": "25-30s", "scene": "CTA closing shot — describe the scene", "text": "Call to action text", "mood": "urgent"}
-  ],
-  "image_keywords": "3 specific visual keywords for stock photo (e.g. urban coffee morning)"
+    {"time": "0-5s", "scene": "Describe opening shot", "text": "Opening on-screen text", "mood": "emotional", "image_prompt": "Cinematic opening frame for a 30s ad: [describe subject, setting, lighting, camera angle in detail]. Photorealistic, commercial ad quality, no text in image."},
+    {"time": "5-15s", "scene": "Describe problem or desire scene", "text": "Key message", "mood": "relatable", "image_prompt": "Cinematic mid-shot: [describe scene — people, emotion, environment]. Photorealistic, cinematic lighting, golden hour or studio, no text in image."},
+    {"time": "15-25s", "scene": "Describe product or service reveal", "text": "Benefit statement", "mood": "confident", "image_prompt": "Product or service reveal shot: [describe clearly — close-up, lifestyle, hero angle]. Clean commercial photography, vivid colours, no text in image."},
+    {"time": "25-30s", "scene": "Describe CTA closing scene", "text": "Call to action", "mood": "urgent", "image_prompt": "Bold CTA closing frame: [describe the final shot — uplifting, forward-looking, aspirational]. High contrast, photorealistic, no text in image."}
+  ]
 }
 
 Output ONLY valid JSON. No markdown fences. No extra text.`
@@ -474,7 +495,7 @@ function renderMakerMockups(assets, brief) {
         <div style="margin-left:auto;color:#65676b;font-size:18px">···</div>
       </div>
       <div class="fb-primary">${esc(fb.primary_text)}</div>
-      <div class="fb-img" style="background-image:url('${imgUrl}')">
+      <div id="ad-fb-img" class="fb-img img-loading" style="background-image:url('${imgUrl}')">
         <div class="ad-img-overlay"><span class="ad-img-tagline">${esc(assets.tagline||brandName)}</span></div>
       </div>
       <div class="fb-cta-bar">
@@ -493,7 +514,7 @@ function renderMakerMockups(assets, brief) {
         <div class="ig-user">${brandHandle}</div>
         <div class="ig-follow">Follow</div>
       </div>
-      <div class="ig-img" style="background-image:url('${igUrl}')">
+      <div id="ad-ig-img" class="ig-img img-loading" style="background-image:url('${igUrl}')">
         <div class="ad-img-overlay"><span class="ad-img-tagline">${esc(assets.tagline||brandName)}</span></div>
       </div>
       <div class="ig-actions">♥ &nbsp;🗨 &nbsp;✈</div>
@@ -537,7 +558,7 @@ function renderMakerMockups(assets, brief) {
     {time:'25–30s',scene:'CTA closing shot',text:'Call to action'}
   ];
   const frames = (vid.length >= 4 ? vid : sbDefault).map((f,i) => `<div class="sb-frame">
-    <div class="sb-screen" style="background-image:url('${pickImg(brief, i+3, 400, 200)}')">
+    <div id="ad-sb-${i}" class="sb-screen img-loading" style="background-image:url('${pickImg(brief, i+3, 400, 200)}')">
       <div class="sb-overlay"><div class="sb-otxt">${esc(f.text||f.overlay||'')}</div></div>
     </div>
     <div class="sb-info">
@@ -550,8 +571,19 @@ function renderMakerMockups(assets, brief) {
     <div class="mock-row">${fbCard}${igCard}</div>
     <div class="mock-row">${gCard}${emCard}</div>
     <div class="mock-row full">${rdCard}</div>
-    <div class="mock-label" style="margin-bottom:10px;display:block">🎬 Video Ad Storyboard — 30 seconds</div>
+    <div class="mock-label" style="margin-bottom:10px;display:block">🎬 Video Ad — AI-Generated Frames (30s)</div>
     <div class="sb-grid">${frames}</div>
+    <button class="sb-play-btn" onclick="playSbPreview()">▶ PLAY VIDEO PREVIEW</button>
+    <div class="sb-player" id="sb-player">
+      <div class="sb-player-frame" id="sb-player-frame"></div>
+      <div class="sb-player-overlay">
+        <div class="sb-player-time" id="sb-player-time"></div>
+        <div class="sb-player-scene" id="sb-player-scene"></div>
+        <div class="sb-player-text" id="sb-player-text"></div>
+      </div>
+      <div class="sb-dots" id="sb-dots"></div>
+      <button class="sb-close-btn" onclick="document.getElementById('sb-player').style.display='none'">✕ CLOSE</button>
+    </div>
   </div>`;
 }
 
@@ -651,6 +683,7 @@ async function runPipeline() {
         const el = document.getElementById('output-2');
         el.className = 'agent-output visible mockup-mode';
         el.innerHTML = renderMakerMockups(makerAssets, brief);
+        if (makerAssets) setTimeout(() => generateAdImages(makerAssets), 150);
       } else {
         showOutput(i, result);
       }
@@ -668,6 +701,88 @@ async function runPipeline() {
 
   isRunning = false;
   document.getElementById('runBtn').disabled = false;
+}
+
+function pollUrl(prompt, w, h) {
+  const clean = (prompt||'advertising campaign, commercial photography').replace(/\[.*?\]/g,'').trim();
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(clean)}?width=${w}&height=${h}&nologo=true&model=flux`;
+}
+
+async function loadAiImg(elementId, prompt, w, h) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      el.style.backgroundImage = `url('${img.src}')`;
+      el.classList.remove('img-loading');
+      el.classList.add('img-loaded');
+      resolve(img.src);
+    };
+    img.onerror = () => { el.classList.remove('img-loading'); resolve(null); };
+    img.src = pollUrl(prompt, w, h);
+  });
+}
+
+async function generateAdImages(assets) {
+  const fb = assets.facebook || {};
+  const ig = assets.instagram || {};
+  const vid = Array.isArray(assets.video) ? assets.video : [];
+  const fallback = assets.image_keywords || 'professional advertising lifestyle photography';
+
+  await Promise.all([
+    loadAiImg('ad-fb-img', fb.image_prompt || fallback, 800, 450),
+    loadAiImg('ad-ig-img', ig.image_prompt || fallback, 600, 600),
+    ...vid.slice(0,4).map((f,i) => loadAiImg(`ad-sb-${i}`, f.image_prompt || fallback, 480, 270))
+  ]);
+}
+
+let sbInterval = null;
+function playSbPreview() {
+  const player = document.getElementById('sb-player');
+  const frameEl = document.getElementById('sb-player-frame');
+  const timeEl  = document.getElementById('sb-player-time');
+  const sceneEl = document.getElementById('sb-player-scene');
+  const textEl  = document.getElementById('sb-player-text');
+  const dotsEl  = document.getElementById('sb-dots');
+  if (!player || !makerAssets) return;
+
+  const vid = makerAssets.video || [
+    {time:'0–5s', scene:'Opening shot', text:'Introducing...'},
+    {time:'5–15s', scene:'Problem moment', text:'You deserve better.'},
+    {time:'15–25s', scene:'Product reveal', text:'Meet the solution.'},
+    {time:'25–30s', scene:'Call to action', text:'Start today.'}
+  ];
+
+  // Collect generated background images from storyboard frames
+  const frames = vid.slice(0,4).map((f,i) => {
+    const el = document.getElementById(`ad-sb-${i}`);
+    return { bg: el ? el.style.backgroundImage : '', ...f };
+  });
+
+  // Build dots
+  dotsEl.innerHTML = frames.map((_,i) => `<div class="sb-dot" id="dot-${i}"></div>`).join('');
+
+  player.style.display = 'block';
+  player.scrollIntoView({ behavior:'smooth', block:'nearest' });
+
+  let idx = 0;
+  if (sbInterval) clearInterval(sbInterval);
+
+  function showFrame(i) {
+    frameEl.style.backgroundImage = frames[i].bg || 'linear-gradient(135deg,#0a1520,#1a2a3a)';
+    timeEl.textContent  = frames[i].time  || '';
+    sceneEl.textContent = frames[i].scene || '';
+    textEl.textContent  = frames[i].text  || '';
+    document.querySelectorAll('.sb-dot').forEach((d,j) => d.classList.toggle('active', j===i));
+  }
+
+  showFrame(0);
+  sbInterval = setInterval(() => {
+    idx = (idx + 1) % frames.length;
+    showFrame(idx);
+    if (idx === frames.length - 1) { clearInterval(sbInterval); sbInterval = null; }
+  }, 3000);
 }
 
 function extractSection(text, ...keywords) {
@@ -872,6 +987,7 @@ function downloadWord() {
 function resetAll() {
   outputs = [];
   makerAssets = null;
+  if (sbInterval) { clearInterval(sbInterval); sbInterval = null; }
   document.getElementById('briefInput').value = '';
   document.getElementById('finalSection').className = 'final-section';
   document.getElementById('progressFill').style.width = '0%';
