@@ -362,50 +362,9 @@ Be bold, creative, and precise. Your concepts should feel fresh, not generic. Re
   },
   {
     name: "The Maker",
-    systemPrompt: `You are The Maker — a master creative producer for AdAgent AI. You receive a Campaign Concept and output ONLY a single valid JSON object — no intro text, no explanation, just the JSON.
+    systemPrompt: `You are The Maker — a master creative producer for AdAgent AI, an autonomous advertising agency. Your superpower is technical craftsmanship and rapid content creation.
 
-{
-  "brand_name": "short brand name (max 20 chars)",
-  "tagline": "campaign tagline",
-  "facebook": {
-    "primary_text": "2-3 sentence primary text. Benefit-driven and emotionally resonant.",
-    "headline": "Punchy headline (max 40 chars)",
-    "description": "Short description (max 30 chars)",
-    "cta": "Learn More",
-    "image_prompt": "Describe the ideal Facebook ad photo in 1-2 sentences: people, setting, mood, lighting. Example: Young woman smiling while using a laptop in a bright modern kitchen, warm morning light, aspirational lifestyle feel. Commercial photography, no text in image."
-  },
-  "instagram": {
-    "caption": "Engaging 2-4 sentence caption in brand voice",
-    "hashtags": "#tag1 #tag2 #tag3 #tag4 #tag5 #tag6",
-    "image_prompt": "Describe the ideal Instagram square ad image: subject, style, colours, mood. Example: Flat lay of artisan coffee and notebook on marble surface, overhead shot, muted tones, minimal aesthetic. Lifestyle photography, vibrant, no text in image."
-  },
-  "google": {
-    "headline1": "Headline One (max 30 chars)",
-    "headline2": "Headline Two (max 30 chars)",
-    "headline3": "Headline Three (max 30 chars)",
-    "desc1": "First description, max 90 characters including spaces here",
-    "desc2": "Second description, max 90 characters including spaces here",
-    "display_url": "www.brand.com/campaign"
-  },
-  "email": {
-    "subject": "Compelling email subject line",
-    "preview": "Preview text 30 chars",
-    "headline": "Email hero headline",
-    "body": "2-3 sentence email body. Personal and direct.",
-    "cta": "CTA Button Text"
-  },
-  "radio": {
-    "script": "Full 30-second script with [SFX: description] and [ANNOUNCER:] markers"
-  },
-  "video": [
-    {"time": "0-5s", "scene": "Describe opening shot", "text": "Opening on-screen text", "mood": "emotional", "image_prompt": "Cinematic opening frame for a 30s ad: [describe subject, setting, lighting, camera angle in detail]. Photorealistic, commercial ad quality, no text in image."},
-    {"time": "5-15s", "scene": "Describe problem or desire scene", "text": "Key message", "mood": "relatable", "image_prompt": "Cinematic mid-shot: [describe scene — people, emotion, environment]. Photorealistic, cinematic lighting, golden hour or studio, no text in image."},
-    {"time": "15-25s", "scene": "Describe product or service reveal", "text": "Benefit statement", "mood": "confident", "image_prompt": "Product or service reveal shot: [describe clearly — close-up, lifestyle, hero angle]. Clean commercial photography, vivid colours, no text in image."},
-    {"time": "25-30s", "scene": "Describe CTA closing scene", "text": "Call to action", "mood": "urgent", "image_prompt": "Bold CTA closing frame: [describe the final shot — uplifting, forward-looking, aspirational]. High contrast, photorealistic, no text in image."}
-  ]
-}
-
-Output ONLY valid JSON. No markdown fences. No extra text.`
+You receive a Campaign Concept from The Designer. Produce compelling, specific, on-brand copy for every ad platform. For every image_prompt field write a vivid, realistic scene that would work as an actual commercial photo or video frame for this specific product — include subject, setting, lighting, mood, and camera angle. Write real copy that converts. No placeholder text.`
   },
   {
     name: "The Communicator",
@@ -599,6 +558,84 @@ function renderMakerMockups(assets, brief, rawText) {
   </div>`;
 }
 
+const MAKER_TOOL = {
+  name: "create_campaign_assets",
+  description: "Create all advertising creative assets for the campaign",
+  input_schema: {
+    type: "object",
+    properties: {
+      brand_name: { type: "string" },
+      tagline:    { type: "string" },
+      facebook: {
+        type: "object",
+        properties: {
+          primary_text: { type: "string" },
+          headline:     { type: "string" },
+          description:  { type: "string" },
+          cta:          { type: "string" },
+          image_prompt: { type: "string", description: "Detailed AI image generation prompt for the Facebook ad photo — describe subject, setting, lighting, mood, camera angle. No text in image." }
+        },
+        required: ["primary_text","headline","description","cta","image_prompt"]
+      },
+      instagram: {
+        type: "object",
+        properties: {
+          caption:      { type: "string" },
+          hashtags:     { type: "string" },
+          image_prompt: { type: "string", description: "Detailed AI image generation prompt for the Instagram square post — lifestyle photography style, no text in image." }
+        },
+        required: ["caption","hashtags","image_prompt"]
+      },
+      google: {
+        type: "object",
+        properties: {
+          headline1:   { type: "string" },
+          headline2:   { type: "string" },
+          headline3:   { type: "string" },
+          desc1:       { type: "string" },
+          desc2:       { type: "string" },
+          display_url: { type: "string" }
+        },
+        required: ["headline1","headline2","headline3","desc1","desc2","display_url"]
+      },
+      email: {
+        type: "object",
+        properties: {
+          subject:  { type: "string" },
+          preview:  { type: "string" },
+          headline: { type: "string" },
+          body:     { type: "string" },
+          cta:      { type: "string" }
+        },
+        required: ["subject","preview","headline","body","cta"]
+      },
+      radio: {
+        type: "object",
+        properties: { script: { type: "string" } },
+        required: ["script"]
+      },
+      video: {
+        type: "array",
+        description: "Exactly 4 storyboard frames for a 30-second video ad",
+        items: {
+          type: "object",
+          properties: {
+            time:         { type: "string" },
+            scene:        { type: "string" },
+            text:         { type: "string" },
+            mood:         { type: "string" },
+            image_prompt: { type: "string", description: "Detailed AI image generation prompt for this video frame — cinematic, photorealistic, no text in image." }
+          },
+          required: ["time","scene","text","mood","image_prompt"]
+        },
+        minItems: 4,
+        maxItems: 4
+      }
+    },
+    required: ["brand_name","tagline","facebook","instagram","google","email","radio","video"]
+  }
+};
+
 async function callClaude(systemPrompt, userMessage) {
   const apiKey = document.getElementById('apiKeyInput').value.trim();
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -619,6 +656,31 @@ async function callClaude(systemPrompt, userMessage) {
   if (!response.ok) throw new Error(`API error: ${response.status}`);
   const data = await response.json();
   return data.content[0].text;
+}
+
+async function callClaudeTool(systemPrompt, userMessage) {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 3000,
+      system: systemPrompt,
+      tools: [MAKER_TOOL],
+      tool_choice: { type: "tool", name: "create_campaign_assets" },
+      messages: [{ role: "user", content: userMessage }]
+    })
+  });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  const toolBlock = data.content.find(c => c.type === 'tool_use');
+  return toolBlock ? toolBlock.input : null;
 }
 
 function setStatus(idx, state) {
@@ -688,15 +750,19 @@ async function runPipeline() {
         userMessage = `Client Brief: ${brief}\n\nFull Pipeline Output:\n\n--- RESEARCH BRIEF ---\n${outputs[0]}\n\n--- CAMPAIGN CONCEPT ---\n${outputs[1]}\n\n--- CREATIVE ASSETS ---\n${outputs[2]}\n\n--- GO-TO-MARKET PLAN ---\n${outputs[3]}\n\nProduce your Executive Summary now.`;
       }
 
-      const result = await callClaude(AGENTS[i].systemPrompt, userMessage);
-      outputs.push(result);
+      let result;
       if (i === 2) {
-        makerAssets = parseMakerAssets(result);
+        makerAssets = await callClaudeTool(AGENTS[i].systemPrompt, userMessage);
+        result = makerAssets ? JSON.stringify(makerAssets) : '';
         const el = document.getElementById('output-2');
         el.className = 'agent-output visible mockup-mode';
         el.innerHTML = renderMakerMockups(makerAssets, brief, result);
         if (makerAssets) setTimeout(() => generateAdImages(makerAssets), 150);
       } else {
+        result = await callClaude(AGENTS[i].systemPrompt, userMessage);
+      }
+      outputs.push(result);
+      if (i !== 2) {
         showOutput(i, result);
       }
       setStatus(i, 'done');
