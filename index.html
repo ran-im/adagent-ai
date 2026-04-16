@@ -616,7 +616,7 @@ const MAKER_TOOL = {
       },
       video: {
         type: "array",
-        description: "Exactly 4 storyboard frames for a 30-second video ad",
+        description: "4 storyboard frames for a 30-second video ad",
         items: {
           type: "object",
           properties: {
@@ -627,9 +627,7 @@ const MAKER_TOOL = {
             image_prompt: { type: "string", description: "Detailed AI image generation prompt for this video frame — cinematic, photorealistic, no text in image." }
           },
           required: ["time","scene","text","mood","image_prompt"]
-        },
-        minItems: 4,
-        maxItems: 4
+        }
       }
     },
     required: ["brand_name","tagline","facebook","instagram","google","email","radio","video"]
@@ -647,7 +645,7 @@ async function callClaude(systemPrompt, userMessage) {
       "anthropic-dangerous-direct-browser-access": "true"
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       system: systemPrompt,
       messages: [{ role: "user", content: userMessage }]
@@ -669,7 +667,7 @@ async function callClaudeTool(systemPrompt, userMessage) {
       "anthropic-dangerous-direct-browser-access": "true"
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 3000,
       system: systemPrompt,
       tools: [MAKER_TOOL],
@@ -677,10 +675,19 @@ async function callClaudeTool(systemPrompt, userMessage) {
       messages: [{ role: "user", content: userMessage }]
     })
   });
-  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  if (!response.ok) {
+    const errBody = await response.text();
+    console.error('Tool call failed:', response.status, errBody);
+    throw new Error(`API error ${response.status}: ${errBody}`);
+  }
   const data = await response.json();
+  console.log('Tool response:', JSON.stringify(data).slice(0, 300));
   const toolBlock = data.content.find(c => c.type === 'tool_use');
-  return toolBlock ? toolBlock.input : null;
+  if (!toolBlock) {
+    console.error('No tool_use block found in response:', data.content);
+    throw new Error('No structured data returned from The Maker — check console for details');
+  }
+  return toolBlock.input;
 }
 
 function setStatus(idx, state) {
